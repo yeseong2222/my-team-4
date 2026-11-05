@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>우리 팀 공공데이터 지도</title>
+  <style>
+    :root { --ink:#182230; --muted:#64748b; --line:#dbe3ee; --blue:#2457d6; --bg:#f5f7fb; --card:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; color:var(--ink); background:var(--bg); }
+    header { padding:26px max(20px,calc((100vw - 1180px)/2)); background:#14213d; color:white; }
+    header .eyebrow { color:#b8c9f5; font-size:13px; font-weight:700; letter-spacing:.08em; }
+    h1 { margin:7px 0 6px; font-size:clamp(24px,4vw,34px); }
+    header p { margin:0; color:#d7e0f5; line-height:1.6; }
+    main { max-width:1180px; margin:22px auto; padding:0 18px 40px; }
+    .notice { background:#fff8e6; border:1px solid #f3d58a; border-radius:12px; padding:13px 15px; line-height:1.55; margin-bottom:16px; }
+    .layout { display:grid; grid-template-columns:330px minmax(0,1fr); gap:16px; align-items:start; }
+    .panel,.map-panel { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 18px #1725540a; }
+    .panel { padding:18px; }
+    .panel h2,.map-panel h2 { margin:0 0 12px; font-size:18px; }
+    .section { padding:0 0 17px; margin:0 0 17px; border-bottom:1px solid var(--line); }
+    .section:last-child { border:0; padding:0; margin:0; }
+    label { display:block; font-size:13px; font-weight:700; margin:11px 0 6px; }
+    input[type="file"],select,input[type="text"] { width:100%; min-height:40px; border:1px solid #cbd5e1; border-radius:9px; padding:8px 10px; background:white; color:var(--ink); }
+    button { border:0; border-radius:9px; padding:10px 13px; font-weight:700; cursor:pointer; background:var(--blue); color:white; }
+    button.secondary { background:#e9eefb; color:#203d82; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .hint,.small { color:var(--muted); font-size:12px; line-height:1.55; }
+    .status { border-radius:10px; padding:10px 11px; background:#f1f5f9; font-size:13px; line-height:1.5; margin-top:10px; overflow-wrap:anywhere; }
+    .status.error { background:#fff0f0; color:#9f2525; }
+    .status.ok { background:#ecfdf3; color:#17643a; }
+    .map-panel { padding:14px; }
+    .map-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 2px 10px; }
+    #map { height:590px; width:100%; border-radius:11px; background:#edf1f6; overflow:hidden; }
+    .map-placeholder { height:100%; display:grid; place-content:center; text-align:center; padding:24px; color:#64748b; line-height:1.7; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+    .stat { background:#f7f9fc; border:1px solid var(--line); border-radius:10px; padding:10px; }
+    .stat b { display:block; font-size:20px; }
+    .stat span { font-size:12px; color:var(--muted); }
+    .table-wrap { overflow:auto; margin-top:14px; border:1px solid var(--line); border-radius:10px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
+    th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+    th { background:#f7f9fc; }
+    tr:last-child td { border-bottom:0; }
+    .source { margin-top:12px; font-size:11px; color:#64748b; line-height:1.5; }
+    footer { max-width:1180px; margin:0 auto; padding:0 18px 30px; color:#64748b; font-size:12px; line-height:1.6; }
+    @media(max-width:850px) { .layout { grid-template-columns:1fr; } #map { height:440px; } }
+    @media(max-width:480px) { header { padding:22px 18px; } main { margin-top:14px; } .panel { padding:15px; } #map { height:380px; } .stats { gap:6px; } .stat { padding:8px; } .stat b { font-size:17px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">TEAM PROJECT · MAP LAB</div>
+  <h1>우리 팀 공공데이터 지도</h1>
+  <p>카카오맵에 연습 마커를 표시하고, CSV 자료를 불러와 우리 팀 데이터로 바꿔 보세요.</p>
+</header>
+<main>
+  <div class="notice"><strong>시작 전 안내</strong><br>
+    지도 SDK를 사용하려면 카카오디벨로퍼스에서 카카오맵 사용 설정을 ON으로 바꾸고, JavaScript 키와 웹앱 도메인을 등록해야 합니다.
+    아래 코드는 키를 아직 입력하지 않은 시작 파일입니다. 연습 위치 3개는 <strong>가상 연습 위치·실제 자료 아님</strong>입니다.
+  </div>
+  <div class="layout">
+    <aside class="panel">
+      <section class="section">
+        <h2>1. 지도 연결</h2>
+        <p class="hint">파일 아래쪽 JavaScript에서 <code>YOUR_JAVASCRIPT_KEY</code>를 본인의 JavaScript 키로 바꾼 뒤 다시 배포하세요.</p>
+        <div id="mapStatus" class="status">키를 입력하면 지도 SDK 연결을 시도합니다. 현재는 안내 화면이 표시됩니다.</div>
+        <div class="btn-row"><button class="secondary" id="retryMap">지도 다시 연결</button></div>
+      </section>
+      <section class="section">
+        <h2>2. 우리 자료 불러오기</h2>
+        <label for="csvFile">CSV 파일 선택</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+        <p class="hint">파일은 이 브라우저 안에서만 읽습니다. 서버로 업로드하지 않습니다. 첫 행은 열 이름이어야 합니다.</p>
+        <label for="latField">위도 열</label><select id="latField" disabled><option>CSV를 먼저 선택하세요</option></select>
+        <label for="lonField">경도 열</label><select id="lonField" disabled><option>CSV를 먼저 선택하세요</option></select>
+        <label for="nameField">마커 이름 열 (선택)</label><select id="nameField" disabled><option value="">자동 이름 사용</option></select>
+        <label for="descField">설명 열 (선택)</label><select id="descField" disabled><option value="">설명 없음</option></select>
+        <div class="btn-row">
+          <button id="applyCsv" disabled>자료를 지도에 표시</button>
+          <button class="secondary" id="restoreDemo">연습 마커 보기</button>
+        </div>
+        <div id="dataStatus" class="status">CSV 파일을 선택하면 열 이름을 읽어옵니다.</div>
+      </section>
+      <section class="section">
+        <h2>3. 결과 확인</h2>
+        <div class="stats">
+          <div class="stat"><b id="totalCount">3</b><span>읽은 항목</span></div>
+          <div class="stat"><b id="validCount">3</b><span>유효 좌표</span></div>
+          <div class="stat"><b id="excludedCount">0</b><span>제외 항목</span></div>
+        </div>
+        <p class="hint">좌표는 WGS84 위도(-90~90), 경도(-180~180)인지 확인하세요. 빈 값은 0으로 바꾸지 않고 제외합니다.</p>
+      </section>
+    </aside>
+    <section class="map-panel">
+      <div class="map-head"><h2>지도</h2><span class="small" id="mapMode">가상 연습 위치</span></div>
+      <div id="map"><div class="map-placeholder">카카오 JavaScript 키를 입력하고<br>웹앱 주소에서 실행하면 지도가 표시됩니다.</div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>항목</th><th>위도</th><th>경도</th><th>상태</th></tr></thead>
+          <tbody id="previewRows">
+            <tr><td>가상 A</td><td>37.5651</td><td>126.9821</td><td>가상 연습 위치</td></tr>
+            <tr><td>가상 B</td><td>37.5670</td><td>126.9850</td><td>가상 연습 위치</td></tr>
+            <tr><td>가상 C</td><td>37.5629</td><td>126.9843</td><td>가상 연습 위치</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="source">지도 출처: Kakao 지도. 카카오 지도 SDK가 정상 로드되면 지도에 표시되는 로고와 저작권 표시는 그대로 유지됩니다. 자료 출처·기준일은 실제 자료를 연결한 뒤 여기에 기록하세요.</div>
+    </section>
+  </div>
+</main>
+<footer>
+  <strong>배포 및 키 설정 순서</strong><br>
+  ① 이 파일을 <code>index.html</code>로 저장해 웹 호스팅에 배포합니다. ② 실제 웹앱 주소를 확인합니다.
+  ③ 카카오디벨로퍼스에서 카카오맵 사용 설정을 ON으로 켭니다. ④ 앱의 JavaScript 키 설정에서 JavaScript SDK 도메인에 웹앱의 도메인을 등록합니다(경로는 제외, localhost는 포트 포함).
+  ⑤ 아래 코드의 자리표시자를 JavaScript 키로 바꾸고 다시 배포합니다. REST API 키·어드민 키·Client Secret은 넣지 마세요.
+</footer>
+<script>
+  // 브라우저 지도용 JavaScript 키만 입력하세요. 비밀키를 입력하지 마세요.
+  const javascriptKey = 'YOUR_JAVASCRIPT_KEY';
+
+  let map = null;
+  let markers = [];
+  let infoWindows = [];
+  let csvRows = [];
+  let csvHeaders = [];
+  let activePoints = [
+    {name:'가상 A', lat:37.5651, lon:126.9821, desc:'가상 연습 위치 · 실제 자료 아님'},
+    {name:'가상 B', lat:37.5670, lon:126.9850, desc:'가상 연습 위치 · 실제 자료 아님'},
+    {name:'가상 C', lat:37.5629, lon:126.9843, desc:'가상 연습 위치 · 실제 자료 아님'}
+  ];
+
+  const $ = id => document.getElementById(id);
+  function setStatus(id, message, kind='') {
+    const el = $(id); el.textContent = message; el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function clearMarkers() {
+    markers.forEach(m => m.setMap(null)); markers = []; infoWindows = [];
+  }
+  function showMapMessage(message) {
+    $('map').innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'map-placeholder'; div.textContent = message;
+    $('map').appendChild(div);
+  }
+  function loadKakaoMap() {
+    if (!javascriptKey || javascriptKey === 'YOUR_JAVASCRIPT_KEY') {
+      showMapMessage('JavaScript 키가 아직 입력되지 않았습니다.\\n키와 도메인 설정을 마친 뒤 이 파일의 키 자리표시자를 바꾸세요.');
+      setStatus('mapStatus', '키 미설정: YOUR_JAVASCRIPT_KEY를 본인의 JavaScript 키로 바꾸세요.');
+      return;
+    }
+    if (window.kakao && window.kakao.maps) { initializeMap(); return; }
+    if (document.getElementById('kakao-sdk')) { setStatus('mapStatus','카카오 지도 SDK를 불러오는 중입니다.'); return; }
+    setStatus('mapStatus','카카오 지도 SDK를 불러오는 중입니다.');
+    const script = document.createElement('script');
+    script.id = 'kakao-sdk';
+    script.async = true;
+    script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(javascriptKey) + '&autoload=false';
+    script.onload = () => {
+      if (window.kakao && window.kakao.maps) window.kakao.maps.load(initializeMap);
+      else setStatus('mapStatus','SDK가 로드되지 않았습니다. 키와 도메인 설정을 확인하세요.','error');
+    };
+    script.onerror = () => setStatus('mapStatus','SDK 요청 실패: 네트워크, JavaScript 키, 도메인 등록을 확인하세요.','error');
+    document.head.appendChild(script);
+  }
+  function initializeMap() {
+    if (!window.kakao || !window.kakao.maps) {
+      setStatus('mapStatus','카카오 지도 객체를 찾을 수 없습니다. SDK 요청을 확인하세요.','error'); return;
+    }
+    $('map').innerHTML = '';
+    map = new kakao.maps.Map($('map'), {center:new kakao.maps.LatLng(37.5665,126.9780), level:6});
+    setStatus('mapStatus','카카오 지도가 연결되었습니다.','ok');
+    renderPoints(activePoints);
+  }
+  function safeText(value) { return value == null ? '' : String(value); }
+  function renderPoints(points) {
+    activePoints = points;
+    $('mapMode').textContent = points === demoPoints ? '가상 연습 위치 · 실제 자료 아님' : '우리 팀 CSV 자료';
+    updateCounts(points.length, points.length, 0);
+    renderPreview(points.map(p => ({name:p.name,lat:p.lat,lon:p.lon,status:'유효 좌표'})));
+    if (!map) return;
+    clearMarkers();
+    const bounds = new kakao.maps.LatLngBounds();
+    points.forEach(point => {
+      const pos = new kakao.maps.LatLng(point.lat, point.lon);
+      const marker = new kakao.maps.Marker({position:pos, map});
+      const content = document.createElement('div');
+      content.style.cssText = 'padding:10px 12px;max-width:230px;font-size:13px;line-height:1.5;';
+      const title = document.createElement('strong'); title.textContent = safeText(point.name);
+      const desc = document.createElement('div'); desc.textContent = safeText(point.desc || '추가 설명 없음');
+      content.append(title, desc);
+      const info = new kakao.maps.InfoWindow({content});
+      kakao.maps.event.addListener(marker,'click',() => {
+        infoWindows.forEach(w => w.close());
+        info.open(map,marker);
+      });
+      markers.push(marker); infoWindows.push(info); bounds.extend(pos);
+    });
+    if (points.length) map.setBounds(bounds);
+  }
+  const demoPoints = [
+    {name:'가상 A',lat:37.5651,lon:126.9821,desc:'가상 연습 위치 · 실제 자료 아님'},
+    {name:'가상 B',lat:37.5670,lon:126.9850,desc:'가상 연습 위치 · 실제 자료 아님'},
+    {name:'가상 C',lat:37.5629,lon:126.9843,desc:'가상 연습 위치 · 실제 자료 아님'}
+  ];
+  function updateCounts(total,valid,excluded) {
+    $('totalCount').textContent=total; $('validCount').textContent=valid; $('excludedCount').textContent=excluded;
+  }
+  function renderPreview(rows) {
+    const body=$('previewRows'); body.replaceChildren();
+    rows.slice(0,100).forEach(r=>{
+      const tr=document.createElement('tr');
+      [r.name,r.lat,r.lon,r.status].forEach(v=>{const td=document.createElement('td');td.textContent=safeText(v);tr.appendChild(td);});
+      body.appendChild(tr);
+    });
+    if (!rows.length) { const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=4; td.textContent='표시할 항목이 없습니다.'; tr.appendChild(td); body.appendChild(tr); }
+  }
+  function parseCSV(text) {
+    const rows=[]; let row=[], field='', quoted=false;
+    for(let i=0;i<text.length;i++){
+      const c=text[i], n=text[i+1];
+      if(c==='"' && quoted && n==='"'){field+='"';i++;}
+      else if(c==='"'){quoted=!quoted;}
+      else if(c===',' && !quoted){row.push(field);field='';}
+      else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&n==='\n')i++;row.push(field);if(row.some(x=>x.trim()!==''))rows.push(row);row=[];field='';}
+      else field+=c;
+    }
+    row.push(field); if(row.some(x=>x.trim()!==''))rows.push(row);
+    return rows;
+  }
+  function fillSelect(select, headers, firstLabel, includeBlank=false) {
+    select.replaceChildren();
+    if(includeBlank){const opt=document.createElement('option');opt.value='';opt.textContent=firstLabel;select.appendChild(opt);}
+    headers.forEach((h,i)=>{const opt=document.createElement('option');opt.value=String(i);opt.textContent=h;select.appendChild(opt);});
+    select.disabled=false;
+  }
+  $('csvFile').addEventListener('change', async e=>{
+    const file=e.target.files[0]; if(!file)return;
+    let text=await file.text();
+    if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+    const parsed=parseCSV(text);
+    if(parsed.length<2){setStatus('dataStatus','CSV에 헤더와 데이터 행이 필요합니다.','error');return;}
+    csvHeaders=parsed[0].map((h,i)=>h.trim()||('열 '+(i+1)));
+    csvRows=parsed.slice(1).map(r=>csvHeaders.map((_,i)=>r[i]??''));
+    fillSelect($('latField'),csvHeaders,''); fillSelect($('lonField'),csvHeaders,'');
+    fillSelect($('nameField'),csvHeaders,'자동 이름 사용',true); fillSelect($('descField'),csvHeaders,'설명 없음',true);
+    const latGuess=csvHeaders.findIndex(h=>/위도|latitude|^lat$/i.test(h));
+    const lonGuess=csvHeaders.findIndex(h=>/경도|longitude|^lon(g)?$/i.test(h));
+    if(latGuess>=0)$('latField').value=String(latGuess);
+    if(lonGuess>=0)$('lonField').value=String(lonGuess);
+    $('applyCsv').disabled=false;
+    setStatus('dataStatus',`${file.name}: ${csvRows.length}개 데이터 행, ${csvHeaders.length}개 열을 읽었습니다. 위도·경도 열을 확인하세요.`,'ok');
+  });
+  $('applyCsv').addEventListener('click',()=>{
+    const latIdx=Number($('latField').value), lonIdx=Number($('lonField').value);
+    const nameIdx=$('nameField').value===''?-1:Number($('nameField').value);
+    const descIdx=$('descField').value===''?-1:Number($('descField').value);
+    let valid=[], excluded=0;
+    csvRows.forEach((r,i)=>{
+      const latText=(r[latIdx]||'').trim(), lonText=(r[lonIdx]||'').trim();
+      const lat=Number(latText), lon=Number(lonText);
+      if(!latText||!lonText||!Number.isFinite(lat)||!Number.isFinite(lon)||lat < -90||lat > 90||lon < -180||lon > 180){excluded++;return;}
+      valid.push({name:nameIdx<0?`자료 ${i+1}`:(r[nameIdx]||`자료 ${i+1}`),lat,lon,desc:descIdx<0?'추가 설명 없음':r[descIdx]});
+    });
+    updateCounts(csvRows.length,valid.length,excluded);
+    renderPreview(valid.map(p=>({name:p.name,lat:p.lat,lon:p.lon,status:'유효 좌표'})));
+    $('mapMode').textContent='우리 팀 CSV 자료';
+    activePoints=valid;
+    if(map)renderPoints(valid);
+    setStatus('dataStatus',`읽은 항목 ${csvRows.length}개 · 유효 좌표 ${valid.length}개 · 제외 ${excluded}개. 원자료와 위치를 별도로 대조하세요.`,valid.length?'ok':'error');
+  });
+  $('restoreDemo').addEventListener('click',()=>{
+    activePoints=demoPoints; updateCounts(3,3,0); renderPreview(demoPoints.map(p=>({name:p.name,lat:p.lat,lon:p.lon,status:'가상 연습 위치'})));
+    $('mapMode').textContent='가상 연습 위치 · 실제 자료 아님';
+    if(map)renderPoints(demoPoints);
+    setStatus('dataStatus','가상 연습 위치 3개를 표시하도록 선택했습니다. 실제 자료가 아닙니다.');
+  });
+  $('retryMap').addEventListener('click',loadKakaoMap);
+  loadKakaoMap();
+</script>
+</body>
+</html>
